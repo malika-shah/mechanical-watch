@@ -19,7 +19,7 @@
       --text: #f8fafc;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none;touch-action: none; }
     
     body { background: var(--bg); color: var(--text); overflow: hidden; width: 100vw; height: 100vh; }
     #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
@@ -72,6 +72,40 @@
 
     .slider-group { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; font-weight: 700; color: #94a3b8; }
     input[type=range] { accent-color: var(--cyan); cursor: pointer; }
+    /* Insert right before line 66 (before </style>) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hud {
+    top: 10px;
+    left: 10px;
+    width: 220px;
+    padding: 10px;
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+    border-radius: 12px;
+  }
+
+  .hud h1 { font-size: 0.85rem; }
+  .hud > p { display: none; }
+
+  .step-box { padding: 6px 8px; margin-bottom: 6px; border-radius: 8px; }
+  .step-title { font-size: 0.65rem; }
+  .step-desc { font-size: 0.68rem; line-height: 1.2; }
+
+  .focus-group { gap: 4px; margin-top: 4px; }
+  .focus-btn { padding: 3px 6px; font-size: 0.6rem; border-radius: 8px; }
+
+  .controls-dock {
+    bottom: 8px;
+    padding: 6px 12px;
+    gap: 6px;
+    border-radius: 20px;
+    max-width: 95vw;
+  }
+
+  button { padding: 4px 8px; font-size: 0.68rem; border-radius: 12px; gap: 3px; }
+  .slider-group { font-size: 0.6rem; gap: 4px; }
+  input[type=range] { width: 60px; }
+}
   </style>
 </head>
 <body>
@@ -142,6 +176,10 @@
     controls.enableZoom = true;
     controls.maxPolarAngle = Math.PI / 2 + 0.1;
 
+    controls.touches = {
+  ONE: THREE.TOUCH.ROTATE,
+  TWO: THREE.TOUCH.DOLLY_PAN
+};
     // --- Lighting ---
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
