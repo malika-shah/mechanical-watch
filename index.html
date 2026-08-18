@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>3D Mechanical Watch - Interactive Breakdown</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -19,10 +19,19 @@
       --text: #f8fafc;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none;touch-action: none; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
     
-    body { background: var(--bg); color: var(--text); overflow: hidden; width: 100vw; height: 100vh; }
-    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+    body { background: var(--bg); color: var(--text); overflow: hidden; width: 100vw; height: 100vh; position: fixed; }
+    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; touch-action: none; }
+
+    /* HUD Toggle Switch for Mobile */
+    .hud-toggle-btn {
+      position: absolute; top: 12px; right: 12px; z-index: 11;
+      background: var(--panel); border: 1px solid var(--border); color: var(--gold);
+      border-radius: 50%; width: 38px; height: 38px; display: flex;
+      align-items: center; justify-content: center; font-size: 1rem; cursor: pointer;
+      backdrop-filter: blur(12px); box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
 
     /* Interactive Instruction Overlay HUD */
     .hud {
@@ -30,6 +39,12 @@
       background: var(--panel); backdrop-filter: blur(12px);
       border: 1px solid var(--border); border-radius: 16px;
       padding: 18px; width: 330px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      max-height: 80vh; overflow-y: auto; transition: opacity 0.3s ease, transform 0.3s ease;
+      touch-action: pan-y;
+    }
+
+    .hud.collapsed {
+      opacity: 0; pointer-events: none; transform: translateY(-10px);
     }
 
     .hud h1 { font-size: 1.1rem; font-weight: 800; text-transform: uppercase; color: var(--gold); letter-spacing: 1px; }
@@ -45,7 +60,7 @@
 
     /* Focus Inspection Buttons */
     .focus-group { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-    .focus-btn { padding: 4px 8px; font-size: 0.68rem; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: var(--cyan); border: 1px solid var(--cyan); cursor: pointer; }
+    .focus-btn { padding: 6px 10px; font-size: 0.7rem; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: var(--cyan); border: 1px solid var(--cyan); cursor: pointer; }
     .focus-btn:hover { background: var(--cyan); color: #000; }
 
     /* Energy Bar Gauge */
@@ -58,13 +73,14 @@
       background: var(--panel); backdrop-filter: blur(12px);
       border: 1px solid var(--border); border-radius: 30px;
       padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.8); max-width: 95vw; touch-action: pan-x;
     }
 
     button {
       background: #1e293b; color: #fff; border: 1px solid var(--border);
       padding: 8px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;
       cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 6px;
+      min-height: 36px;
     }
     button:hover { background: #334155; border-color: var(--cyan); }
     button.active { background: var(--cyan); color: #0b0f19; border-color: var(--cyan); }
@@ -72,48 +88,57 @@
 
     .slider-group { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; font-weight: 700; color: #94a3b8; }
     input[type=range] { accent-color: var(--cyan); cursor: pointer; }
-    /* Insert right before line 66 (before </style>) */
-@media (max-height: 500px) and (orientation: landscape) {
-  .hud {
-    top: 10px;
-    left: 10px;
-    width: 220px;
-    padding: 10px;
-    max-height: calc(100vh - 20px);
-    overflow-y: auto;
-    border-radius: 12px;
-  }
 
-  .hud h1 { font-size: 0.85rem; }
-  .hud > p { display: none; }
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 768px) {
+      .hud {
+        top: 10px; left: 10px; right: 10px; width: auto; max-width: calc(100vw - 20px);
+        max-height: 45vh; padding: 12px; border-radius: 12px;
+      }
+      .hud h1 { font-size: 0.95rem; }
+      .hud p { font-size: 0.72rem; margin-bottom: 8px; }
+      .step-box { padding: 8px; margin-bottom: 6px; }
+      .step-desc { font-size: 0.7rem; }
+      
+      .controls-dock {
+        bottom: 12px; left: 10px; right: 10px; transform: none;
+        width: auto; max-width: calc(100vw - 20px); padding: 8px 12px;
+        border-radius: 20px; justify-content: flex-start; flex-wrap: nowrap;
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+      }
+      .controls-dock::-webkit-scrollbar { display: none; }
+      button { flex: 0 0 auto; white-space: nowrap; font-size: 0.72rem; padding: 6px 10px; }
+      .slider-group { flex: 0 0 auto; white-space: nowrap; font-size: 0.65rem; }
+      input[type=range] { width: 70px; }
+    }
 
-  .step-box { padding: 6px 8px; margin-bottom: 6px; border-radius: 8px; }
-  .step-title { font-size: 0.65rem; }
-  .step-desc { font-size: 0.68rem; line-height: 1.2; }
-
-  .focus-group { gap: 4px; margin-top: 4px; }
-  .focus-btn { padding: 3px 6px; font-size: 0.6rem; border-radius: 8px; }
-
-  .controls-dock {
-    bottom: 8px;
-    padding: 6px 12px;
-    gap: 6px;
-    border-radius: 20px;
-    max-width: 95vw;
-  }
-
-  button { padding: 4px 8px; font-size: 0.68rem; border-radius: 12px; gap: 3px; }
-  .slider-group { font-size: 0.6rem; gap: 4px; }
-  input[type=range] { width: 60px; }
-}
+    @media (max-height: 500px) and (orientation: landscape) {
+      .hud {
+        top: 10px; left: 10px; width: 220px; padding: 10px;
+        max-height: calc(100vh - 20px); border-radius: 12px;
+      }
+      .hud h1 { font-size: 0.85rem; }
+      .hud > p { display: none; }
+      .step-box { padding: 6px 8px; margin-bottom: 6px; }
+      .step-title { font-size: 0.65rem; }
+      .step-desc { font-size: 0.68rem; line-height: 1.2; }
+      .focus-group { gap: 4px; margin-top: 4px; }
+      .focus-btn { padding: 4px 8px; font-size: 0.6rem; }
+      .controls-dock { bottom: 8px; padding: 6px 12px; gap: 6px; }
+      button { padding: 4px 8px; font-size: 0.68rem; }
+      .slider-group { font-size: 0.6rem; }
+      input[type=range] { width: 60px; }
+    }
   </style>
 </head>
 <body>
 
   <div id="canvas-container"></div>
 
+  <button class="hud-toggle-btn" onclick="toggleHUD()" aria-label="Toggle HUD">ℹ️</button>
+
   <!-- Instruction HUD -->
-  <div class="hud">
+  <div class="hud" id="hud-panel">
     <h1>Mechanical Watch</h1>
     <p>Explore the inner energy, gear ratios, and balance escapement driving an automatic movement.</p>
 
@@ -125,7 +150,7 @@
 
     <div class="step-box">
       <div class="step-title">Step 2: Kickstart Escapement</div>
-      <div class="step-desc">Click <strong>"Swing Balance Wheel"</strong> to oscillate the hairspring and release gear movement tick-by-tick.</div>
+      <div class="step-desc">Click <strong>"Swing Balance Wheel"</strong> to oscillate hairspring and release gears tick-by-tick.</div>
     </div>
 
     <div class="step-box">
@@ -133,8 +158,8 @@
       <div class="step-desc">Focus camera directly onto gear assemblies:</div>
       <div class="focus-group">
         <button class="focus-btn" onclick="setFocusView('overview')">🔍 Overview</button>
-        <button class="focus-btn" onclick="setFocusView('balance')">⚖️ Balance Wheel</button>
-        <button class="focus-btn" onclick="setFocusView('escape')">⚙️ Escapement</button>
+        <button class="focus-btn" onclick="setFocusView('balance')">⚖️ Balance</button>
+        <button class="focus-btn" onclick="setFocusView('escape')">⚙️ Escape</button>
         <button class="focus-btn" onclick="setFocusView('barrel')">🔋 Mainspring</button>
       </div>
     </div>
@@ -143,19 +168,24 @@
   <!-- Bottom Dock Controls -->
   <div class="controls-dock">
     <button onclick="windMainspring()">🔄 Wind Crown</button>
-    <button onclick="swingBalanceWheel()">⚡ Swing Balance Wheel</button>
+    <button onclick="swingBalanceWheel()">⚡ Swing Balance</button>
     <button id="xray-btn" onclick="toggleXRay()">🦴 X-Ray Dial</button>
     <button id="slomo-btn" onclick="toggleSlowMo()">🐌 Slow-Mo</button>
     <button onclick="zoomIn()">➕ Zoom In</button>
     <button onclick="zoomOut()">➖ Zoom Out</button>
 
     <div class="slider-group">
-      <span>EXPLODE VIEW</span>
+      <span>EXPLODE</span>
       <input type="range" id="explode-slider" min="0" max="1" step="0.01" value="0" oninput="updateExplode(this.value)">
     </div>
   </div>
 
   <script>
+    // --- UI Helpers ---
+    function toggleHUD() {
+      document.getElementById('hud-panel').classList.toggle('collapsed');
+    }
+
     // --- 3D Scene & Engine Setup ---
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
@@ -175,11 +205,21 @@
     controls.dampingFactor = 0.05;
     controls.enableZoom = true;
     controls.maxPolarAngle = Math.PI / 2 + 0.1;
-
     controls.touches = {
-  ONE: THREE.TOUCH.ROTATE,
-  TWO: THREE.TOUCH.DOLLY_PAN
-};
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
+
+    // --- Dynamic Camera FOV Adjustment for Mobile ---
+    function updateCameraAspect() {
+      const aspect = window.innerWidth / window.innerHeight;
+      camera.aspect = aspect;
+      camera.fov = aspect < 1 ? 62 : 45; // Wider view on mobile portrait to fit complete watch
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    updateCameraAspect();
+
     // --- Lighting ---
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
@@ -200,7 +240,7 @@
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.05, ior: 1.5 });
     const dialMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8, transparent: true, opacity: 1.0 });
 
-    // --- Procedural Geometry Generators with High-Contrast Gear Teeth Accent ---
+    // --- Procedural Geometry Generators ---
     function createSpurredGear(radius, teeth, thickness, material) {
       const group = new THREE.Group();
       const coreGeo = new THREE.CylinderGeometry(radius, radius, thickness, 32);
@@ -208,7 +248,7 @@
       group.add(core);
 
       const toothGeo = new THREE.BoxGeometry(0.12, thickness, 0.15);
-      const accentMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.5 }); // High contrast tooth marker
+      const accentMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.5 });
 
       for (let i = 0; i < teeth; i++) {
         const angle = (i / teeth) * Math.PI * 2;
@@ -224,7 +264,6 @@
     const watchGroup = new THREE.Group();
     scene.add(watchGroup);
 
-    // Layer Groups for Exploded View
     const glassLayer = new THREE.Group();
     const handsLayer = new THREE.Group();
     const dialLayer = new THREE.Group();
@@ -260,7 +299,6 @@
     const dial = new THREE.Mesh(dialGeo, dialMat);
     dialLayer.add(dial);
 
-    // Dial Markings
     for (let i = 0; i < 12; i++) {
       const angle = (i / 12) * Math.PI * 2;
       const tickGeo = new THREE.BoxGeometry(0.1, 0.06, 0.4);
@@ -283,23 +321,19 @@
 
     handsLayer.add(hourHand, minuteHand);
 
-    // 5. Movement Interior (Gears, Mainspring, Balance Wheel)
-    // Mainspring Barrel (Power Source)
+    // 5. Movement Interior
     const barrel = createSpurredGear(1.1, 24, 0.3, brassMat);
     barrel.position.set(1.2, -0.1, 1.0);
     movementLayer.add(barrel);
 
-    // Center Gear
     const centerGear = createSpurredGear(0.8, 18, 0.2, goldMat);
     centerGear.position.set(0, -0.1, 0);
     movementLayer.add(centerGear);
 
-    // Escape Wheel
     const escapeWheel = createSpurredGear(0.5, 12, 0.15, steelMat);
     escapeWheel.position.set(-1.1, -0.1, -0.8);
     movementLayer.add(escapeWheel);
 
-    // Balance Wheel & Hairspring (Oscillator Regulator)
     const balanceGroup = new THREE.Group();
     balanceGroup.position.set(-1.8, -0.05, 0.6);
 
@@ -308,7 +342,6 @@
     balanceRim.rotation.x = Math.PI / 2;
     balanceGroup.add(balanceRim);
 
-    // Hairspring Spiral
     const spiralPoints = [];
     for (let i = 0; i < 80; i++) {
       const a = 0.25 * i;
@@ -322,7 +355,6 @@
 
     movementLayer.add(balanceGroup);
 
-    // Synthetic Ruby Jewel Bearings
     const rubyGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.1, 16);
     [
       [0, -0.22, 0], [1.2, -0.22, 1.0], [-1.1, -0.22, -0.8], [-1.8, -0.22, 0.6]
@@ -380,7 +412,7 @@
       }
     }
 
-    // --- X-Ray Dial & Slow-Mo Modes ---
+    // --- X-Ray & Slow-Mo Modes ---
     let isXRay = false;
     function toggleXRay() {
       isXRay = !isXRay;
@@ -411,7 +443,7 @@
       springEnergy = Math.min(1.0, springEnergy + 0.25);
       document.getElementById('energy-bar').style.width = `${springEnergy * 100}%`;
       crown.rotation.x += Math.PI / 2;
-      barrel.rotation.y += 0.3; // Visible winding step
+      barrel.rotation.y += 0.3;
     }
 
     function swingBalanceWheel() {
@@ -429,24 +461,19 @@
     function animate() {
       requestAnimationFrame(animate);
       
-      // 1. Clamp delta time step (max 0.1s) to prevent physics explosion when switching tabs
       let delta = Math.min(clock.getDelta(), 0.1);
       if (isSlowMo) delta *= 0.25;
 
-      // Smooth Camera & Target Interpolation
       camera.position.lerp(targetCamPos, 0.08);
       controls.target.lerp(targetLookAt, 0.08);
 
-      // Oscillation Physics for Balance Wheel & Hairspring
       if (isTicking || Math.abs(balanceVelocity) > 0.001) {
         const k = 18.0; 
         const accel = -k * balanceAngle;
         balanceVelocity += accel * delta;
         balanceAngle += balanceVelocity * delta;
 
-        // 2. Cap maximum velocity to prevent runaway rotation
         balanceVelocity = Math.max(-2.5, Math.min(2.5, balanceVelocity));
-
         balanceVelocity *= 0.992;
         
         if (springEnergy > 0) {
@@ -462,12 +489,8 @@
         balanceGroup.rotation.y = balanceAngle;
         hairspring.scale.setScalar(1 + Math.sin(balanceAngle) * 0.15);
 
-        // Drive Gear Train & Watch Hands according to balance ticks
         const tickStep = Math.abs(balanceVelocity) * delta * 0.5;
-        
-        // Exaggerated barrel rotation so unwinding is visually clear
         barrel.rotation.y += tickStep * 0.08;
-        
         escapeWheel.rotation.y += tickStep * 3;
         centerGear.rotation.y += tickStep * 0.5;
         minuteHand.rotation.y -= tickStep * 0.2;
@@ -479,11 +502,7 @@
     }
 
     // --- Window Resize Listener ---
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    window.addEventListener('resize', updateCameraAspect);
 
     // Start App
     animate();
