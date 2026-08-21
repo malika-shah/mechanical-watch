@@ -3,131 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>3D Mechanical Watch - Interactive Breakdown</title>
+  <title>Horological Movement Visualizer</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
   <style>
     :root {
-      --bg: #0b0f19;
-      --panel: rgba(15, 23, 42, 0.85);
-      --border: rgba(255, 255, 255, 0.15);
-      --gold: #facc15;
-      --cyan: #38bdf8;
-      --ruby: #f43f5e;
-      --text: #f8fafc;
+      --bg-surface: #101216;
+      --panel-bg: rgba(20, 24, 31, 0.92);
+      --border-color: rgba(255, 255, 255, 0.12);
+      --border-focus: #4a82a6;
+      
+      --color-brass: #ffd700;
+      --color-blued-steel: #4aaee6;
+      --color-steel: #ffffff;
+      --color-ruby: #bd1d38;
+      --color-text-main: #edf2f7;
+      --color-text-sub: #8a99ad;
+      
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-ui); user-select: none; }
     
-    body { background: var(--bg); color: var(--text); overflow: hidden; width: 100vw; height: 100vh; position: fixed; }
+    body { background: var(--bg-surface); color: var(--color-text-main); overflow: hidden; width: 100vw; height: 100vh; position: fixed; }
     #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; touch-action: none; }
 
-    /* HUD Toggle Switch for Mobile */
+    /* UI Toggle Button */
     .hud-toggle-btn {
-      position: absolute; top: 12px; right: 12px; z-index: 11;
-      background: var(--panel); border: 1px solid var(--border); color: var(--gold);
-      border-radius: 50%; width: 38px; height: 38px; display: flex;
-      align-items: center; justify-content: center; font-size: 1rem; cursor: pointer;
-      backdrop-filter: blur(12px); box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      position: absolute; top: 16px; right: 16px; z-index: 11;
+      background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--color-brass);
+      border-radius: 8px; width: 40px; height: 40px; display: flex;
+      align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer;
+      backdrop-filter: blur(16px); transition: border-color 0.2s, background 0.2s;
     }
+    .hud-toggle-btn:hover { border-color: var(--color-brass); background: rgba(30, 36, 46, 0.95); }
 
-    /* Interactive Instruction Overlay HUD */
+    /* HUD Panel */
     .hud {
-      position: absolute; top: 20px; left: 20px; z-index: 10;
-      background: var(--panel); backdrop-filter: blur(12px);
-      border: 1px solid var(--border); border-radius: 16px;
-      padding: 18px; width: 330px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-      max-height: 80vh; overflow-y: auto; transition: opacity 0.3s ease, transform 0.3s ease;
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      background: var(--panel-bg); backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color); border-radius: 12px;
+      padding: 20px; width: 320px; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
+      max-height: 85vh; overflow-y: auto; transition: opacity 0.25s ease, transform 0.25s ease;
       touch-action: pan-y;
     }
 
-    .hud.collapsed {
-      opacity: 0; pointer-events: none; transform: translateY(-10px);
-    }
+    .hud.collapsed { opacity: 0; pointer-events: none; transform: translateY(-8px); }
 
-    .hud h1 { font-size: 1.1rem; font-weight: 800; text-transform: uppercase; color: var(--gold); letter-spacing: 1px; }
-    .hud p { font-size: 0.78rem; color: #94a3b8; margin: 4px 0 12px; line-height: 1.4; }
+    .hud-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+    .hud h1 { font-size: 0.95rem; font-weight: 700; text-transform: uppercase; color: var(--color-brass); letter-spacing: 0.08em; font-family: var(--font-mono); }
+    .hud p { font-size: 0.78rem; color: var(--color-text-sub); margin-bottom: 16px; line-height: 1.4; }
 
     .step-box {
-      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
-      border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+      background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);
+      border-radius: 8px; padding: 12px; margin-bottom: 10px;
     }
 
-    .step-title { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--cyan); margin-bottom: 4px; }
-    .step-desc { font-size: 0.75rem; color: #e2e8f0; }
+    .step-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--color-blued-steel); margin-bottom: 4px; font-family: var(--font-mono); letter-spacing: 0.05em; }
+    .step-desc { font-size: 0.76rem; color: var(--color-text-main); line-height: 1.35; }
 
     /* Focus Inspection Buttons */
-    .focus-group { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-    .focus-btn { padding: 6px 10px; font-size: 0.7rem; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: var(--cyan); border: 1px solid var(--cyan); cursor: pointer; }
-    .focus-btn:hover { background: var(--cyan); color: #000; }
+    .focus-group { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .focus-btn {
+      padding: 5px 9px; font-size: 0.68rem; font-weight: 600; border-radius: 6px;
+      background: rgba(74, 130, 166, 0.12); color: var(--color-blued-steel);
+      border: 1px solid rgba(74, 130, 166, 0.3); cursor: pointer; transition: all 0.15s ease;
+    }
+    .focus-btn:hover { background: var(--color-blued-steel); color: #fff; border-color: var(--color-blued-steel); }
 
     /* Energy Bar Gauge */
-    .gauge-container { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 8px; }
-    .gauge-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--cyan), var(--gold)); transition: width 0.1s ease; }
+    .gauge-container { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 3px; overflow: hidden; margin-top: 10px; }
+    .gauge-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--color-blued-steel), var(--color-brass)); transition: width 0.15s ease-out; }
 
     /* Control Dock Bottom */
     .controls-dock {
       position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10;
-      background: var(--panel); backdrop-filter: blur(12px);
-      border: 1px solid var(--border); border-radius: 30px;
-      padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.8); max-width: 95vw; touch-action: pan-x;
+      background: var(--panel-bg); backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color); border-radius: 12px;
+      padding: 8px 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6); max-width: 95vw; touch-action: pan-x;
     }
 
-    button {
-      background: #1e293b; color: #fff; border: 1px solid var(--border);
-      padding: 8px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;
-      cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 6px;
-      min-height: 36px;
+    button.control-btn {
+      background: rgba(255, 255, 255, 0.04); color: var(--color-text-main); border: 1px solid var(--border-color);
+      padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;
+      min-height: 34px;
     }
-    button:hover { background: #334155; border-color: var(--cyan); }
-    button.active { background: var(--cyan); color: #0b0f19; border-color: var(--cyan); }
-    button:active { transform: scale(0.96); }
+    button.control-btn:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--border-focus); }
+    button.control-btn.active { background: var(--color-blued-steel); color: #000000; border-color: var(--color-blued-steel); }
+    button.control-btn:active { transform: translateY(1px); }
 
-    .slider-group { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; font-weight: 700; color: #94a3b8; }
-    input[type=range] { accent-color: var(--cyan); cursor: pointer; }
+    .slider-group { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; font-weight: 700; color: var(--color-text-sub); font-family: var(--font-mono); padding: 0 4px; }
+    input[type=range] { accent-color: var(--color-blued-steel); cursor: pointer; }
 
-    /* Mobile Responsive Optimizations */
+    /* Responsive Adjustments */
     @media (max-width: 768px) {
-      .hud {
-        top: 10px; left: 10px; right: 10px; width: auto; max-width: calc(100vw - 20px);
-        max-height: 45vh; padding: 12px; border-radius: 12px;
-      }
-      .hud h1 { font-size: 0.95rem; }
-      .hud p { font-size: 0.72rem; margin-bottom: 8px; }
-      .step-box { padding: 8px; margin-bottom: 6px; }
-      .step-desc { font-size: 0.7rem; }
-      
-      .controls-dock {
-        bottom: 12px; left: 10px; right: 10px; transform: none;
-        width: auto; max-width: calc(100vw - 20px); padding: 8px 12px;
-        border-radius: 20px; justify-content: flex-start; flex-wrap: nowrap;
-        overflow-x: auto; -webkit-overflow-scrolling: touch;
-      }
-      .controls-dock::-webkit-scrollbar { display: none; }
-      button { flex: 0 0 auto; white-space: nowrap; font-size: 0.72rem; padding: 6px 10px; }
-      .slider-group { flex: 0 0 auto; white-space: nowrap; font-size: 0.65rem; }
-      input[type=range] { width: 70px; }
-    }
-
-    @media (max-height: 500px) and (orientation: landscape) {
-      .hud {
-        top: 10px; left: 10px; width: 220px; padding: 10px;
-        max-height: calc(100vh - 20px); border-radius: 12px;
-      }
-      .hud h1 { font-size: 0.85rem; }
-      .hud > p { display: none; }
-      .step-box { padding: 6px 8px; margin-bottom: 6px; }
-      .step-title { font-size: 0.65rem; }
-      .step-desc { font-size: 0.68rem; line-height: 1.2; }
-      .focus-group { gap: 4px; margin-top: 4px; }
-      .focus-btn { padding: 4px 8px; font-size: 0.6rem; }
-      .controls-dock { bottom: 8px; padding: 6px 12px; gap: 6px; }
-      button { padding: 4px 8px; font-size: 0.68rem; }
-      .slider-group { font-size: 0.6rem; }
-      input[type=range] { width: 60px; }
+      .hud { top: 12px; left: 12px; right: 12px; width: auto; max-width: calc(100vw - 24px); max-height: 40vh; padding: 14px; }
+      .controls-dock { bottom: 12px; left: 12px; right: 12px; transform: none; width: auto; max-width: calc(100vw - 24px); justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
+      button.control-btn { flex: 0 0 auto; white-space: nowrap; font-size: 0.7rem; padding: 5px 10px; }
+      .slider-group { flex: 0 0 auto; }
     }
   </style>
 </head>
@@ -135,377 +113,368 @@
 
   <div id="canvas-container"></div>
 
-  <button class="hud-toggle-btn" onclick="toggleHUD()" aria-label="Toggle HUD">ℹ️</button>
+  <button class="hud-toggle-btn" id="hud-toggle" aria-label="Toggle Navigation HUD">ℹ</button>
 
-  <!-- Instruction HUD -->
   <div class="hud" id="hud-panel">
-    <h1>Mechanical Watch</h1>
-    <p>Explore the inner energy, gear ratios, and balance escapement driving an automatic movement.</p>
+    <div class="hud-header">
+      <h1>Caliber Visualizer</h1>
+    </div>
+    <p>Mechanical watch movement telemetry, power train transmission, and balance assembly breakdown.</p>
 
     <div class="step-box">
-      <div class="step-title">Step 1: Wind Mainspring</div>
-      <div class="step-desc">Click <strong>"Wind Crown"</strong> to coil potential energy inside the barrel.</div>
+      <div class="step-title">01. Mainspring Reserve</div>
+      <div class="step-desc">Click <strong>Wind Crown</strong> to store tension in the mainspring barrel.</div>
       <div class="gauge-container"><div id="energy-bar" class="gauge-fill"></div></div>
     </div>
 
     <div class="step-box">
-      <div class="step-title">Step 2: Kickstart Escapement</div>
-      <div class="step-desc">Click <strong>"Swing Balance Wheel"</strong> to oscillate hairspring and release gears tick-by-tick.</div>
+      <div class="step-title">02. Escapement Impulse</div>
+      <div class="step-desc">Click <strong>Swing Balance</strong> to initiate hairspring oscillation and drive gear indexing.</div>
     </div>
 
     <div class="step-box">
-      <div class="step-title">Step 3: Close-Up Inspection</div>
-      <div class="step-desc">Focus camera directly onto gear assemblies:</div>
+      <div class="step-title">03. Inspection Target</div>
+      <div class="step-desc">Focus camera trajectory:</div>
       <div class="focus-group">
-        <button class="focus-btn" onclick="setFocusView('overview')">🔍 Overview</button>
-        <button class="focus-btn" onclick="setFocusView('balance')">⚖️ Balance</button>
-        <button class="focus-btn" onclick="setFocusView('escape')">⚙️ Escape</button>
-        <button class="focus-btn" onclick="setFocusView('barrel')">🔋 Mainspring</button>
+        <button class="focus-btn" data-focus="overview">Overview</button>
+        <button class="focus-btn" data-focus="balance">Balance</button>
+        <button class="focus-btn" data-focus="escape">Escapement</button>
+        <button class="focus-btn" data-focus="barrel">Barrel</button>
       </div>
     </div>
   </div>
 
-  <!-- Bottom Dock Controls -->
   <div class="controls-dock">
-    <button onclick="windMainspring()">🔄 Wind Crown</button>
-    <button onclick="swingBalanceWheel()">⚡ Swing Balance</button>
-    <button id="xray-btn" onclick="toggleXRay()">🦴 X-Ray Dial</button>
-    <button id="slomo-btn" onclick="toggleSlowMo()">🐌 Slow-Mo</button>
-    <button onclick="zoomIn()">➕ Zoom In</button>
-    <button onclick="zoomOut()">➖ Zoom Out</button>
+    <button class="control-btn" id="btn-wind">Wind Crown</button>
+    <button class="control-btn" id="btn-swing">Swing Balance</button>
+    <button class="control-btn" id="btn-xray">X-Ray Dial</button>
+    <button class="control-btn" id="btn-slomo">Slow-Motion</button>
+    <button class="control-btn" id="btn-zoomin">+</button>
+    <button class="control-btn" id="btn-zoomout">-</button>
 
     <div class="slider-group">
       <span>EXPLODE</span>
-      <input type="range" id="explode-slider" min="0" max="1" step="0.01" value="0" oninput="updateExplode(this.value)">
+      <input type="range" id="explode-slider" min="0" max="1" step="0.005" value="0">
     </div>
   </div>
 
   <script>
-    // --- UI Helpers ---
-    function toggleHUD() {
-      document.getElementById('hud-panel').classList.toggle('collapsed');
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- App State ---
+      const state = {
+        springEnergy: 0,
+        balanceVelocity: 0,
+        balanceAngle: 0,
+        isTicking: false,
+        isXRay: false,
+        isSlowMo: false,
+        explodeAmount: 0,
+        targetCamPos: new THREE.Vector3(0, 8, 12),
+        targetLookAt: new THREE.Vector3(0, 0, 0)
+      };
 
-    // --- 3D Scene & Engine Setup ---
-    const container = document.getElementById('canvas-container');
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b0f19);
+      // --- Scene Setup ---
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x101216);
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 8, 12);
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 8, 12);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    container.appendChild(renderer.domElement);
-
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.enableZoom = true;
-    controls.maxPolarAngle = Math.PI / 2 + 0.1;
-    controls.touches = {
-      ONE: THREE.TOUCH.ROTATE,
-      TWO: THREE.TOUCH.DOLLY_PAN
-    };
-
-    // --- Dynamic Camera FOV Adjustment for Mobile ---
-    function updateCameraAspect() {
-      const aspect = window.innerWidth / window.innerHeight;
-      camera.aspect = aspect;
-      camera.fov = aspect < 1 ? 62 : 45; // Wider view on mobile portrait to fit complete watch
-      camera.updateProjectionMatrix();
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-    updateCameraAspect();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      container.appendChild(renderer.domElement);
 
-    // --- Lighting ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-    scene.add(ambientLight);
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 + 0.1;
 
-    const dirLight1 = new THREE.DirectionalLight(0xfff5ea, 1.5);
-    dirLight1.position.set(10, 20, 15);
-    scene.add(dirLight1);
+      // --- Lighting (Boosted for better visibility) ---
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.4); // Much brighter ambient light
+      scene.add(ambientLight);
 
-    const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.8);
-    dirLight2.position.set(-10, -10, -10);
-    scene.add(dirLight2);
+      const dirLight1 = new THREE.DirectionalLight(0xfff8ee, 1.6);
+      dirLight1.position.set(10, 20, 15);
+      scene.add(dirLight1);
 
-    // --- Materials ---
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 });
-    const steelMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.15 });
-    const brassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.7, roughness: 0.3 });
-    const rubyMat = new THREE.MeshPhysicalMaterial({ color: 0xf43f5e, transmission: 0.6, opacity: 1, transparent: true, roughness: 0.1 });
-    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.05, ior: 1.5 });
-    const dialMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8, transparent: true, opacity: 1.0 });
+      const dirLight2 = new THREE.DirectionalLight(0x4a82a6, 0.8);
+      dirLight2.position.set(-10, -10, -10);
+      scene.add(dirLight2);
 
-    // --- Procedural Geometry Generators ---
-    function createSpurredGear(radius, teeth, thickness, material) {
-      const group = new THREE.Group();
-      const coreGeo = new THREE.CylinderGeometry(radius, radius, thickness, 32);
-      const core = new THREE.Mesh(coreGeo, material);
-      group.add(core);
-
-      const toothGeo = new THREE.BoxGeometry(0.12, thickness, 0.15);
-      const accentMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.5 });
-
-      for (let i = 0; i < teeth; i++) {
-        const angle = (i / teeth) * Math.PI * 2;
-        const tooth = new THREE.Mesh(toothGeo, (i === 0) ? accentMat : material);
-        tooth.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-        tooth.rotation.y = -angle;
-        group.add(tooth);
-      }
-      return group;
-    }
-
-    // --- Build Assembly Group Layers ---
-    const watchGroup = new THREE.Group();
-    scene.add(watchGroup);
-
-    const glassLayer = new THREE.Group();
-    const handsLayer = new THREE.Group();
-    const dialLayer = new THREE.Group();
-    const movementLayer = new THREE.Group();
-    const caseLayer = new THREE.Group();
-
-    watchGroup.add(glassLayer, handsLayer, dialLayer, movementLayer, caseLayer);
-
-    // 1. Watch Case & Crown
-    const caseGeo = new THREE.CylinderGeometry(3.2, 3.2, 0.8, 48, 1, true);
-    const caseMesh = new THREE.Mesh(caseGeo, steelMat);
-    caseLayer.add(caseMesh);
-
-    const backGeo = new THREE.CylinderGeometry(3.2, 3.2, 0.1, 48);
-    const backMesh = new THREE.Mesh(backGeo, steelMat);
-    backMesh.position.y = -0.4;
-    caseLayer.add(backMesh);
-
-    const crownGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.6, 16);
-    const crown = new THREE.Mesh(crownGeo, steelMat);
-    crown.rotation.z = Math.PI / 2;
-    crown.position.set(3.4, 0, 0);
-    caseLayer.add(crown);
-
-    // 2. Sapphire Crystal Glass
-    const glassGeo = new THREE.CylinderGeometry(3.15, 3.15, 0.1, 48);
-    const glass = new THREE.Mesh(glassGeo, glassMat);
-    glass.position.y = 0.45;
-    glassLayer.add(glass);
-
-    // 3. Dial Face
-    const dialGeo = new THREE.CylinderGeometry(3.0, 3.0, 0.05, 48);
-    const dial = new THREE.Mesh(dialGeo, dialMat);
-    dialLayer.add(dial);
-
-    for (let i = 0; i < 12; i++) {
-      const angle = (i / 12) * Math.PI * 2;
-      const tickGeo = new THREE.BoxGeometry(0.1, 0.06, 0.4);
-      const tick = new THREE.Mesh(tickGeo, goldMat);
-      tick.position.set(Math.sin(angle) * 2.5, 0.03, Math.cos(angle) * 2.5);
-      tick.rotation.y = angle;
-      dialLayer.add(tick);
-    }
-
-    // 4. Hands
-    const hourHandGeo = new THREE.BoxGeometry(0.12, 0.04, 1.6);
-    hourHandGeo.translate(0, 0, 0.8);
-    const hourHand = new THREE.Mesh(hourHandGeo, goldMat);
-    hourHand.position.y = 0.1;
-
-    const minuteHandGeo = new THREE.BoxGeometry(0.08, 0.04, 2.2);
-    minuteHandGeo.translate(0, 0, 1.1);
-    const minuteHand = new THREE.Mesh(minuteHandGeo, steelMat);
-    minuteHand.position.y = 0.15;
-
-    handsLayer.add(hourHand, minuteHand);
-
-    // 5. Movement Interior
-    const barrel = createSpurredGear(1.1, 24, 0.3, brassMat);
-    barrel.position.set(1.2, -0.1, 1.0);
-    movementLayer.add(barrel);
-
-    const centerGear = createSpurredGear(0.8, 18, 0.2, goldMat);
-    centerGear.position.set(0, -0.1, 0);
-    movementLayer.add(centerGear);
-
-    const escapeWheel = createSpurredGear(0.5, 12, 0.15, steelMat);
-    escapeWheel.position.set(-1.1, -0.1, -0.8);
-    movementLayer.add(escapeWheel);
-
-    const balanceGroup = new THREE.Group();
-    balanceGroup.position.set(-1.8, -0.05, 0.6);
-
-    const balanceRimGeo = new THREE.TorusGeometry(0.7, 0.06, 16, 32);
-    const balanceRim = new THREE.Mesh(balanceRimGeo, goldMat);
-    balanceRim.rotation.x = Math.PI / 2;
-    balanceGroup.add(balanceRim);
-
-    const spiralPoints = [];
-    for (let i = 0; i < 80; i++) {
-      const a = 0.25 * i;
-      const r = 0.008 * i;
-      spiralPoints.push(new THREE.Vector3(Math.cos(a) * r, 0.02, Math.sin(a) * r));
-    }
-    const spiralGeo = new THREE.BufferGeometry().setFromPoints(spiralPoints);
-    const spiralMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 });
-    const hairspring = new THREE.Line(spiralGeo, spiralMat);
-    balanceGroup.add(hairspring);
-
-    movementLayer.add(balanceGroup);
-
-    const rubyGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.1, 16);
-    [
-      [0, -0.22, 0], [1.2, -0.22, 1.0], [-1.1, -0.22, -0.8], [-1.8, -0.22, 0.6]
-    ].forEach(pos => {
-      const ruby = new THREE.Mesh(rubyGeo, rubyMat);
-      ruby.position.set(...pos);
-      movementLayer.add(ruby);
-    });
-
-    // Layer Offset Targets for Exploded View
-    const layerOffsets = { glass: 3.5, hands: 2.2, dial: 1.2, movement: 0, case: -1.8 };
-
-    let explodeAmount = 0;
-    function updateExplode(val) {
-      explodeAmount = parseFloat(val);
-      glassLayer.position.y = layerOffsets.glass * explodeAmount;
-      handsLayer.position.y = layerOffsets.hands * explodeAmount;
-      dialLayer.position.y = layerOffsets.dial * explodeAmount;
-      caseLayer.position.y = layerOffsets.case * explodeAmount;
-    }
-
-    // --- Camera Focus & Zoom Controls ---
-    let targetCamPos = new THREE.Vector3(0, 8, 12);
-    let targetLookAt = new THREE.Vector3(0, 0, 0);
-
-    function setFocusView(preset) {
-      if (preset === 'balance') {
-        targetCamPos.set(-1.8, 3.5, 2.5);
-        targetLookAt.set(-1.8, 0, 0.6);
-      } else if (preset === 'escape') {
-        targetCamPos.set(-1.1, 3.0, -2.2);
-        targetLookAt.set(-1.1, 0, -0.8);
-      } else if (preset === 'barrel') {
-        targetCamPos.set(1.2, 3.5, 2.8);
-        targetLookAt.set(1.2, 0, 1.0);
-      } else {
-        targetCamPos.set(0, 8, 12);
-        targetLookAt.set(0, 0, 0);
-      }
-    }
-
-    function zoomIn() {
-      const dir = new THREE.Vector3().subVectors(targetCamPos, targetLookAt).normalize();
-      const currentDist = targetCamPos.distanceTo(targetLookAt);
-      if (currentDist > 3.0) {
-        targetCamPos.sub(dir.multiplyScalar(2.0));
-      }
-    }
-
-    function zoomOut() {
-      const dir = new THREE.Vector3().subVectors(targetCamPos, targetLookAt).normalize();
-      const currentDist = targetCamPos.distanceTo(targetLookAt);
-      if (currentDist < 25.0) {
-        targetCamPos.add(dir.multiplyScalar(2.0));
-      }
-    }
-
-    // --- X-Ray & Slow-Mo Modes ---
-    let isXRay = false;
-    function toggleXRay() {
-      isXRay = !isXRay;
-      const btn = document.getElementById('xray-btn');
-      if (isXRay) {
-        dialMat.opacity = 0.2;
-        btn.classList.add('active');
-      } else {
-        dialMat.opacity = 1.0;
-        btn.classList.remove('active');
-      }
-    }
-
-    let isSlowMo = false;
-    function toggleSlowMo() {
-      isSlowMo = !isSlowMo;
-      const btn = document.getElementById('slomo-btn');
-      btn.classList.toggle('active', isSlowMo);
-    }
-
-    // --- Interactive Physics & Movement Logic ---
-    let springEnergy = 0;
-    let balanceVelocity = 0;
-    let balanceAngle = 0;
-    let isTicking = false;
-
-    function windMainspring() {
-      springEnergy = Math.min(1.0, springEnergy + 0.25);
-      document.getElementById('energy-bar').style.width = `${springEnergy * 100}%`;
-      crown.rotation.x += Math.PI / 2;
-      barrel.rotation.y += 0.3;
-    }
-
-    function swingBalanceWheel() {
-      if (springEnergy <= 0) {
-        alert("Wind the mainspring crown first to supply energy!");
-        return;
-      }
-      balanceVelocity = 0.35;
-      isTicking = true;
-    }
-
-    // --- Main Animation Loop ---
-    const clock = new THREE.Clock();
-
-    function animate() {
-      requestAnimationFrame(animate);
+      // --- Materials (Brightened High-Contrast Theme) ---
+      const brassMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.6, roughness: 0.25 }); // Bright Yellow Gold
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.15 }); // Bright Rhodium/Silver
+      const bluedSteelMat = new THREE.MeshStandardMaterial({ color: 0x4aaee6, metalness: 0.6, roughness: 0.2 }); // Vivid Light Blue
       
-      let delta = Math.min(clock.getDelta(), 0.1);
-      if (isSlowMo) delta *= 0.25;
+      const rubyMat = new THREE.MeshPhysicalMaterial({ color: 0xff2a4a, transmission: 0.5, opacity: 1, transparent: true, roughness: 0.1 });
+      const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.92, opacity: 1, transparent: true, roughness: 0.05, ior: 1.5 });
+      const dialMat = new THREE.MeshStandardMaterial({ color: 0x181c24, roughness: 0.75, transparent: true, opacity: 1.0 });
 
-      camera.position.lerp(targetCamPos, 0.08);
-      controls.target.lerp(targetLookAt, 0.08);
+      // --- Procedural Geometry Generators ---
+      function createSpurredGear(radius, teeth, thickness, material) {
+        const group = new THREE.Group();
+        const coreGeo = new THREE.CylinderGeometry(radius, radius, thickness, 32);
+        const core = new THREE.Mesh(coreGeo, material);
+        group.add(core);
 
-      if (isTicking || Math.abs(balanceVelocity) > 0.001) {
-        const k = 18.0; 
-        const accel = -k * balanceAngle;
-        balanceVelocity += accel * delta;
-        balanceAngle += balanceVelocity * delta;
+        const toothGeo = new THREE.BoxGeometry(0.12, thickness, 0.15);
+        for (let i = 0; i < teeth; i++) {
+          const angle = (i / teeth) * Math.PI * 2;
+          const tooth = new THREE.Mesh(toothGeo, (i === 0) ? bluedSteelMat : material);
+          tooth.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+          tooth.rotation.y = -angle;
+          group.add(tooth);
+        }
+        return group;
+      }
 
-        balanceVelocity = Math.max(-2.5, Math.min(2.5, balanceVelocity));
-        balanceVelocity *= 0.992;
-        
-        if (springEnergy > 0) {
-          if (Math.abs(balanceAngle) < 0.05) {
-            balanceVelocity += Math.sign(balanceVelocity || 1) * 0.02;
-            springEnergy = Math.max(0, springEnergy - 0.00015);
-            document.getElementById('energy-bar').style.width = `${springEnergy * 100}%`;
+      // --- Assembly Layers ---
+      const watchGroup = new THREE.Group();
+      scene.add(watchGroup);
+
+      const glassLayer = new THREE.Group();
+      const handsLayer = new THREE.Group();
+      const dialLayer = new THREE.Group();
+      const movementLayer = new THREE.Group();
+      const caseLayer = new THREE.Group();
+
+      watchGroup.add(glassLayer, handsLayer, dialLayer, movementLayer, caseLayer);
+
+      // 1. Case & Crown (Darker case so bright gears pop)
+      const caseMat = new THREE.MeshStandardMaterial({ color: 0x606a75, metalness: 0.8, roughness: 0.3 }); 
+      const caseGeo = new THREE.CylinderGeometry(3.2, 3.2, 0.8, 48, 1, true);
+      const caseMesh = new THREE.Mesh(caseGeo, caseMat);
+      caseLayer.add(caseMesh);
+
+      const backGeo = new THREE.CylinderGeometry(3.2, 3.2, 0.1, 48);
+      const backMesh = new THREE.Mesh(backGeo, caseMat);
+      backMesh.position.y = -0.4;
+      caseLayer.add(backMesh);
+
+      const crownGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.6, 16);
+      const crown = new THREE.Mesh(crownGeo, caseMat);
+      crown.rotation.z = Math.PI / 2;
+      crown.position.set(3.4, 0, 0);
+      caseLayer.add(crown);
+
+      // 2. Crystal
+      const glassGeo = new THREE.CylinderGeometry(3.15, 3.15, 0.1, 48);
+      const glass = new THREE.Mesh(glassGeo, glassMat);
+      glass.position.y = 0.45;
+      glassLayer.add(glass);
+
+      // 3. Dial Face
+      const dialGeo = new THREE.CylinderGeometry(3.0, 3.0, 0.05, 48);
+      const dial = new THREE.Mesh(dialGeo, dialMat);
+      dialLayer.add(dial);
+
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const tickGeo = new THREE.BoxGeometry(0.08, 0.06, 0.35);
+        const tick = new THREE.Mesh(tickGeo, brassMat);
+        tick.position.set(Math.sin(angle) * 2.5, 0.03, Math.cos(angle) * 2.5);
+        tick.rotation.y = angle;
+        dialLayer.add(tick);
+      }
+
+      // 4. Hands
+      const hourHandGeo = new THREE.BoxGeometry(0.12, 0.04, 1.6);
+      hourHandGeo.translate(0, 0, 0.8);
+      const hourHand = new THREE.Mesh(hourHandGeo, brassMat);
+      hourHand.position.y = 0.1;
+
+      const minuteHandGeo = new THREE.BoxGeometry(0.08, 0.04, 2.2);
+      minuteHandGeo.translate(0, 0, 1.1);
+      const minuteHand = new THREE.Mesh(minuteHandGeo, bluedSteelMat);
+      minuteHand.position.y = 0.15;
+
+      handsLayer.add(hourHand, minuteHand);
+
+      // 5. Movement Components
+      const barrel = createSpurredGear(1.1, 24, 0.3, brassMat);
+      barrel.position.set(1.2, -0.1, 1.0);
+      movementLayer.add(barrel);
+
+      const centerGear = createSpurredGear(0.8, 18, 0.2, brassMat);
+      centerGear.position.set(0, -0.1, 0);
+      movementLayer.add(centerGear);
+
+      const escapeWheel = createSpurredGear(0.5, 12, 0.15, steelMat);
+      escapeWheel.position.set(-1.1, -0.1, -0.8);
+      movementLayer.add(escapeWheel);
+
+      const balanceGroup = new THREE.Group();
+      balanceGroup.position.set(-1.8, -0.05, 0.6);
+
+      const balanceRimGeo = new THREE.TorusGeometry(0.7, 0.06, 16, 32);
+      const balanceRim = new THREE.Mesh(balanceRimGeo, brassMat);
+      balanceRim.rotation.x = Math.PI / 2;
+      balanceGroup.add(balanceRim);
+
+      const spiralPoints = [];
+      for (let i = 0; i < 80; i++) {
+        const a = 0.25 * i;
+        const r = 0.008 * i;
+        spiralPoints.push(new THREE.Vector3(Math.cos(a) * r, 0.02, Math.sin(a) * r));
+      }
+      const spiralGeo = new THREE.BufferGeometry().setFromPoints(spiralPoints);
+      const spiralMat = new THREE.LineBasicMaterial({ color: 0x4aaee6, linewidth: 2 });
+      const hairspring = new THREE.Line(spiralGeo, spiralMat);
+      balanceGroup.add(hairspring);
+
+      movementLayer.add(balanceGroup);
+
+      const rubyGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.1, 16);
+      [
+        [0, -0.22, 0], [1.2, -0.22, 1.0], [-1.1, -0.22, -0.8], [-1.8, -0.22, 0.6]
+      ].forEach(pos => {
+        const ruby = new THREE.Mesh(rubyGeo, rubyMat);
+        ruby.position.set(...pos);
+        movementLayer.add(ruby);
+      });
+
+      // --- Layout Offsets & Aspect Ratio ---
+      const layerOffsets = { glass: 3.5, hands: 2.2, dial: 1.2, movement: 0, case: -1.8 };
+
+      function updateCameraAspect() {
+        const aspect = window.innerWidth / window.innerHeight;
+        camera.aspect = aspect;
+        camera.fov = aspect < 1 ? 60 : 45;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+      updateCameraAspect();
+
+      // --- Event Handlers & Binding ---
+      const energyBar = document.getElementById('energy-bar');
+
+      document.getElementById('hud-toggle').addEventListener('click', () => {
+        document.getElementById('hud-panel').classList.toggle('collapsed');
+      });
+
+      document.getElementById('btn-wind').addEventListener('click', () => {
+        state.springEnergy = Math.min(1.0, state.springEnergy + 0.25);
+        energyBar.style.width = `${state.springEnergy * 100}%`;
+        crown.rotation.x += Math.PI / 2;
+        barrel.rotation.y += 0.3;
+      });
+
+      document.getElementById('btn-swing').addEventListener('click', () => {
+        if (state.springEnergy <= 0) {
+          alert("Mainspring is fully unwound. Wind the crown first.");
+          return;
+        }
+        state.balanceVelocity = 0.35;
+        state.isTicking = true;
+      });
+
+      const xrayBtn = document.getElementById('btn-xray');
+      xrayBtn.addEventListener('click', () => {
+        state.isXRay = !state.isXRay;
+        dialMat.opacity = state.isXRay ? 0.2 : 1.0;
+        xrayBtn.classList.toggle('active', state.isXRay);
+      });
+
+      const slomoBtn = document.getElementById('btn-slomo');
+      slomoBtn.addEventListener('click', () => {
+        state.isSlowMo = !state.isSlowMo;
+        slomoBtn.classList.toggle('active', state.isSlowMo);
+      });
+
+      document.getElementById('btn-zoomin').addEventListener('click', () => {
+        const dir = new THREE.Vector3().subVectors(state.targetCamPos, state.targetLookAt).normalize();
+        if (state.targetCamPos.distanceTo(state.targetLookAt) > 3.0) {
+          state.targetCamPos.sub(dir.multiplyScalar(2.0));
+        }
+      });
+
+      document.getElementById('btn-zoomout').addEventListener('click', () => {
+        const dir = new THREE.Vector3().subVectors(state.targetCamPos, state.targetLookAt).normalize();
+        if (state.targetCamPos.distanceTo(state.targetLookAt) < 25.0) {
+          state.targetCamPos.add(dir.multiplyScalar(2.0));
+        }
+      });
+
+      document.getElementById('explode-slider').addEventListener('input', (e) => {
+        state.explodeAmount = parseFloat(e.target.value);
+        glassLayer.position.y = layerOffsets.glass * state.explodeAmount;
+        handsLayer.position.y = layerOffsets.hands * state.explodeAmount;
+        dialLayer.position.y = layerOffsets.dial * state.explodeAmount;
+        caseLayer.position.y = layerOffsets.case * state.explodeAmount;
+      });
+
+      document.querySelectorAll('.focus-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const target = e.target.getAttribute('data-focus');
+          if (target === 'balance') {
+            state.targetCamPos.set(-1.8, 3.5, 2.5);
+            state.targetLookAt.set(-1.8, 0, 0.6);
+          } else if (target === 'escape') {
+            state.targetCamPos.set(-1.1, 3.0, -2.2);
+            state.targetLookAt.set(-1.1, 0, -0.8);
+          } else if (target === 'barrel') {
+            state.targetCamPos.set(1.2, 3.5, 2.8);
+            state.targetLookAt.set(1.2, 0, 1.0);
+          } else {
+            state.targetCamPos.set(0, 8, 12);
+            state.targetLookAt.set(0, 0, 0);
           }
-        } else if (Math.abs(balanceVelocity) < 0.01) {
-          isTicking = false;
+        });
+      });
+
+      window.addEventListener('resize', updateCameraAspect);
+
+      // --- Main Render Loop ---
+      const clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        
+        let delta = Math.min(clock.getDelta(), 0.1);
+        if (state.isSlowMo) delta *= 0.25;
+
+        camera.position.lerp(state.targetCamPos, 0.08);
+        controls.target.lerp(state.targetLookAt, 0.08);
+
+        if (state.isTicking || Math.abs(state.balanceVelocity) > 0.001) {
+          const k = 18.0; 
+          const accel = -k * state.balanceAngle;
+          state.balanceVelocity += accel * delta;
+          state.balanceAngle += state.balanceVelocity * delta;
+
+          state.balanceVelocity = Math.max(-2.5, Math.min(2.5, state.balanceVelocity));
+          state.balanceVelocity *= 0.992;
+          
+          if (state.springEnergy > 0) {
+            if (Math.abs(state.balanceAngle) < 0.05) {
+              state.balanceVelocity += Math.sign(state.balanceVelocity || 1) * 0.02;
+              state.springEnergy = Math.max(0, state.springEnergy - 0.00015);
+              energyBar.style.width = `${state.springEnergy * 100}%`;
+            }
+          } else if (Math.abs(state.balanceVelocity) < 0.01) {
+            state.isTicking = false;
+          }
+
+          balanceGroup.rotation.y = state.balanceAngle;
+          hairspring.scale.setScalar(1 + Math.sin(state.balanceAngle) * 0.15);
+
+          const tickStep = Math.abs(state.balanceVelocity) * delta * 0.5;
+          barrel.rotation.y += tickStep * 0.08;
+          escapeWheel.rotation.y += tickStep * 3;
+          centerGear.rotation.y += tickStep * 0.5;
+          minuteHand.rotation.y -= tickStep * 0.2;
+          hourHand.rotation.y -= tickStep * 0.015;
         }
 
-        balanceGroup.rotation.y = balanceAngle;
-        hairspring.scale.setScalar(1 + Math.sin(balanceAngle) * 0.15);
-
-        const tickStep = Math.abs(balanceVelocity) * delta * 0.5;
-        barrel.rotation.y += tickStep * 0.08;
-        escapeWheel.rotation.y += tickStep * 3;
-        centerGear.rotation.y += tickStep * 0.5;
-        minuteHand.rotation.y -= tickStep * 0.2;
-        hourHand.rotation.y -= tickStep * 0.015;
+        controls.update();
+        renderer.render(scene, camera);
       }
 
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    // --- Window Resize Listener ---
-    window.addEventListener('resize', updateCameraAspect);
-
-    // Start App
-    animate();
+      animate();
+    });
   </script>
 </body>
 </html>
